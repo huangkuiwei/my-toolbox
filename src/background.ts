@@ -18,6 +18,7 @@ async function createWindow() {
       contextIsolation: false,
       webSecurity: false,
       webviewTag: true,
+      enableRemoteModule: true,
     },
   });
 
