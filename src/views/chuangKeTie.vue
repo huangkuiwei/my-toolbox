@@ -1,18 +1,32 @@
 <template>
   <div class="chuang-ke-tie">
-    <Button v-if="!hasLogin" @click="login">请登录</Button>
+    <template v-if="!hasLogin">
+      <Button @click="login">请登录</Button>
+    </template>
 
-    <LoginAuthDialog v-model:visible="isOpenLoginAuthDialog" :webviewProp="webviewProp" />
+    <template v-else>
+      <div>已登录，请选择图片！</div>
+      <Button @click="uploadFile">上传图片</Button>
+    </template>
+
+    <LoginAuthDialog
+      v-if="isOpenLoginAuthDialog"
+      :visible="isOpenLoginAuthDialog"
+      @update:visible="isOpenLoginAuthDialog = $event"
+      :webviewProp="webviewProp"
+    />
   </div>
 </template>
 
 <script lang="ts">
 import { Button } from 'ant-design-vue';
 import { ref, defineComponent } from 'vue';
-import { remote } from 'electron';
-import { checkLoginStatus } from '@/platform/chuangKeTie';
+import { checkLoginStatus, kouTou } from '@/platform/chuangKeTie';
 import LoginAuthDialog from '@/components/dialog/loginAuthDialog.vue';
 import platformData from '@/data/platformData';
+import { remote } from 'electron';
+import crypto from 'crypto';
+import * as fs from 'fs';
 
 export default defineComponent({
   name: 'chuangKeTei',
@@ -23,13 +37,12 @@ export default defineComponent({
   },
 
   setup() {
-    console.log(remote.app.getAppPath());
-
     const webviewProp = platformData.chuangKeTie;
     let isOpenLoginAuthDialog = ref(false);
     let hasLogin = ref(false);
+    let md5 = ref('');
 
-    checkLoginStatus().then((res) => {
+    checkLoginStatus(webviewProp.partition).then((res) => {
       hasLogin.value = res;
     });
 
@@ -37,11 +50,38 @@ export default defineComponent({
       isOpenLoginAuthDialog.value = true;
     };
 
+    const uploadFile = () => {
+      remote.dialog
+        .showOpenDialog({
+          properties: ['openFile'],
+        })
+        .then((res) => {
+          if (!res.canceled) {
+            let filePath = res.filePaths[0];
+            const buffer = fs.readFileSync(filePath);
+            const hash = crypto.createHash('md5');
+            hash.update(buffer);
+            md5.value = hash.digest('hex');
+
+            kouTou(
+              webviewProp.partition,
+              {
+                md5: md5.value,
+              },
+              filePath,
+            ).then((res) => {
+              console.log(res);
+            });
+          }
+        });
+    };
+
     return {
       webviewProp,
       hasLogin,
       isOpenLoginAuthDialog,
       login,
+      uploadFile,
     };
   },
 });

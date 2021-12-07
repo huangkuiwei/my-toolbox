@@ -3,6 +3,6 @@ export default {
     checkLoginUrl: 'https://api.chuangkit.com/user/getUserInfo.do',
     loginPage: 'https://www.chuangkit.com/',
     partition: 'chuangKeTie',
-    preload: '',
+    preload: 'E:\\project\\github\\vue-electron-tool\\public\\preload\\chuangKeTie.js',
   },
 };

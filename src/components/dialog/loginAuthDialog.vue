@@ -1,12 +1,13 @@
 <template>
   <Modal
     class="login-auth"
-    :visible="visible"
     :footer="false"
+    :visible="visible"
     @update:visible="$emit('update:visible', !visible)"
-    @cancel="$emit('update:visible', false)"
+    @cancel="close"
   >
     <webview
+      ref="webview"
       id="webview"
       :src="webviewProp.loginPage"
       :partition="webviewProp.partition"
@@ -16,8 +17,14 @@
 </template>
 
 <script lang="ts">
-import { Modal } from 'ant-design-vue';
+import { Modal, message } from 'ant-design-vue';
 import { defineComponent } from 'vue';
+import { remote, WebviewTag } from 'electron';
+
+interface Data {
+  webview: WebviewTag | null;
+  homePage: string;
+}
 
 export default defineComponent({
   name: 'loginAuth',
@@ -30,15 +37,52 @@ export default defineComponent({
 
     webviewProp: {
       required: true,
-      default: {},
+      default: () => ({
+        partition: '',
+      }),
     },
   },
+
+  emits: ['update:visible'],
 
   components: {
     Modal,
   },
 
-  emits: ['update:visible'],
+  data(): Data {
+    return {
+      webview: null,
+      homePage: 'https://www.chuangkit.com/designtools/designindex',
+    };
+  },
+
+  mounted() {
+    this.$nextTick(() => {
+      this.webview = this.$refs.webview as WebviewTag;
+
+      this.webview.addEventListener('dom-ready', () => {
+        if (this.webview) {
+          let id = this.webview.getWebContentsId();
+          let webContent = remote.webContents.fromId(id);
+          webContent.openDevTools();
+        }
+      });
+
+      this.webview.addEventListener('did-navigate', (event) => {
+        if (event.url === this.homePage) {
+          // 登录成功
+          message.success('登录成功');
+          this.close();
+        }
+      });
+    });
+  },
+
+  methods: {
+    close() {
+      this.$emit('update:visible', false);
+    },
+  },
 });
 </script>
 
