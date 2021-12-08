@@ -1,12 +1,6 @@
 (function () {
-  let loginBtn;
-
-  const timer = setInterval(() => {
-    if (!loginBtn) {
-      loginBtn = document.querySelector('.avatar-text a');
-    } else {
-      loginBtn.click();
-      clearInterval(timer);
-    }
-  }, 20);
+  window.addEventListener('load', () => {
+    const loginBtn = document.querySelector('.avatar-text a');
+    loginBtn.click();
+  });
 })();
