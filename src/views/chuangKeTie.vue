@@ -1,7 +1,7 @@
 <template>
   <div class="chuang-ke-tie">
     <template v-if="!hasLogin">
-      <Button @click="login">请登录</Button>
+      <Button @click="isOpenLoginAuthDialog = true">请登录</Button>
     </template>
 
     <template v-else>
@@ -66,13 +66,6 @@ export default defineComponent({
     });
 
     /**
-     * 登录
-     */
-    const login = () => {
-      isOpenLoginAuthDialog.value = true;
-    };
-
-    /**
      * 上传图片文件
      */
     const uploadFile = () => {
@@ -82,7 +75,7 @@ export default defineComponent({
           filters: [
             {
               name: 'pic',
-              extensions: ['png', 'jpg'],
+              extensions: ['png', 'jpg', 'jpeg'],
             },
           ],
         })
@@ -104,7 +97,6 @@ export default defineComponent({
       savePath,
       autoSave,
       handledUrlList,
-      login,
       uploadFile,
     };
   },
@@ -144,8 +136,11 @@ export default defineComponent({
 
     > div {
       margin: 0 auto;
-      height: 300px;
-      width: 300px;
+      height: 250px;
+      width: 250px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
 
       > img {
         max-width: 100%;

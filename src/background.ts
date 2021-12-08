@@ -3,6 +3,7 @@
 import { app, protocol, BrowserWindow } from 'electron';
 import { createProtocol } from 'vue-cli-plugin-electron-builder/lib';
 import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer';
+
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
 protocol.registerSchemesAsPrivileged([
@@ -27,7 +28,7 @@ async function createWindow() {
     if (!process.env.IS_TEST) win.webContents.openDevTools();
   } else {
     createProtocol('app');
-    win.loadURL('app://./index.html');
+    await win.loadURL('app://./index.html');
   }
 }
 
