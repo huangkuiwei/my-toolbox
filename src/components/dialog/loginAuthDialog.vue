@@ -43,7 +43,7 @@ export default defineComponent({
     },
   },
 
-  emits: ['update:visible'],
+  emits: ['update:visible', 'loginSuccess'],
 
   components: {
     Modal,
@@ -61,8 +61,8 @@ export default defineComponent({
 
       this.webview.addEventListener('dom-ready', () => {
         if (this.webview) {
-          let id = this.webview.getWebContentsId();
-          let webContent = remote.webContents.fromId(id);
+          // let id = this.webview.getWebContentsId();
+          // let webContent = remote.webContents.fromId(id);
           // webContent.openDevTools();
         }
       });
@@ -71,6 +71,7 @@ export default defineComponent({
         if (event.url === this.webviewProp.homePage) {
           // 登录成功
           message.success('登录成功');
+          this.$emit('loginSuccess');
           this.close();
         }
       });

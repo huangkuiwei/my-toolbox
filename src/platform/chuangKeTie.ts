@@ -12,142 +12,162 @@ interface ConfigData {
   };
 }
 
-/**
- * 是否登录
- * @param partition
- */
-export async function checkLoginStatus(partition: string): Promise<boolean> {
-  const cookies = await getPlatformCookies(partition);
-  const cookiesStr = stringifyCookies(cookies);
-  const url = 'https://api.chuangkit.com/user/getUserInfo.do?_dataType=json';
+export class ChuangKeTie {
+  getConfigApi = 'https://api-v2.chuangkit.com/design/preUploadMattingImage.do';
+  uploadFileApi = 'https://pri-cdn-oss.chuangkit.com';
+  getUrlApi = 'https://api-v2.chuangkit.com/design/addImageCommonMattingTask.do';
+  cookiesStr!: string;
+  configData!: ConfigData;
 
-  return new Promise((resolve) => {
-    request.post(
-      url,
-      {
-        headers: {
-          cookie: cookiesStr,
-        },
-        form: {
-          client_type: 0,
-          _dataClientType: 0,
-        },
-      },
-      (error, response, body) => {
-        const data = JSON.parse(body);
+  constructor(public partition: string, public filePath: string | string[]) {}
 
-        if (data.body.LoginTimeOut) {
-          resolve(false);
-        } else {
-          resolve(true);
-        }
-      },
-    );
-  });
+  /**
+   * 抠图
+   */
+  async kouTou(): Promise<string[]> {
+    const cookies = await getPlatformCookies(this.partition);
+    this.cookiesStr = stringifyCookies(cookies);
+
+    if (typeof this.filePath === 'string') {
+      const imgUrl = 'https:' + (await this.handleFile(this.filePath));
+      return [imgUrl];
+    } else {
+      const imgUrlList = [];
+
+      for (const item of this.filePath) {
+        imgUrlList.push('https:' + (await this.handleFile(item)));
+      }
+
+      return imgUrlList;
+    }
+  }
+
+  async handleFile(filePath: string): Promise<string> {
+    await this.getConfig(filePath);
+    await this.uploadFile(filePath);
+    return await this.getUrl();
+  }
+
+  /**
+   * 获取抠图需要的配置
+   */
+  getConfig(filePath: string): Promise<undefined> {
+    const md5 = getFileMd5(filePath);
+
+    return new Promise((resolve) => {
+      request.post(
+        this.getConfigApi,
+        {
+          headers: {
+            cookie: this.cookiesStr,
+          },
+          form: {
+            _dataType: 'json',
+            type: '0',
+            md5,
+          },
+        },
+        (error, response, body) => {
+          const data = JSON.parse(body);
+          console.log(data);
+          this.configData = data.body.data;
+          resolve(undefined);
+        },
+      );
+    });
+  }
+
+  /**
+   * 上传文件
+   */
+  uploadFile(filePath: string): Promise<undefined> {
+    const buffer = fs.readFileSync(filePath);
+
+    return new Promise((resolve) => {
+      const req = request.post(
+        this.uploadFileApi,
+        {
+          headers: {
+            cookie: this.cookiesStr,
+          },
+        },
+        () => {
+          resolve(undefined);
+        },
+      );
+
+      const form = req.form();
+
+      form.append('key', this.configData.uploadPms.fileKey);
+      form.append('policy', this.configData.uploadPms.policy);
+      form.append('Signature', this.configData.uploadPms.signature);
+      form.append('OSSAccessKeyId', 'LTAI5tLA8R9gj4dHcVn23jMZ');
+      form.append('Content-MD5', this.configData.uploadPms.md5);
+      form.append('file', buffer);
+    });
+  }
+
+  /**
+   * 文件上传完成之后获取文件的url
+   */
+  getUrl(): Promise<string> {
+    return new Promise((resolve) => {
+      request.post(
+        this.getUrlApi,
+        {
+          form: {
+            task_id: this.configData.taskId,
+            policy: this.configData.uploadPms.policy,
+            signature: this.configData.uploadPms.signature,
+          },
+          headers: {
+            cookie: this.cookiesStr,
+          },
+        },
+        (error, response, body) => {
+          const data = JSON.parse(body);
+          resolve(data.body.data.imageUrl);
+        },
+      );
+    });
+  }
 }
 
-/**
- * 抠图
- * @param partition
- * @param filePath
- */
-export async function kouTou(partition: string, filePath: string): Promise<string> {
-  const cookies = await getPlatformCookies(partition);
-  const cookiesStr = stringifyCookies(cookies);
-  const data = await getConfig(cookiesStr, filePath);
-  await uploadFile(filePath, data, cookiesStr);
-  return await getUrl(data, cookiesStr);
-}
+export class CheckLoginStatus {
+  checkLoginStatusApi = 'https://api.chuangkit.com/user/getUserInfo.do?_dataType=json';
+  cookiesStr!: string;
 
-/**
- * 获取抠图需要的配置
- * @param cookiesStr
- * @param filePath
- */
-function getConfig(cookiesStr: string, filePath: string): Promise<ConfigData> {
-  const url = 'https://api-v2.chuangkit.com/design/preUploadMattingImage.do';
-  const md5 = getFileMd5(filePath);
+  constructor(public partition: string) {}
 
-  return new Promise((resolve) => {
-    request.post(
-      url,
-      {
-        headers: {
-          cookie: cookiesStr,
+  /**
+   * 是否登录
+   */
+  async check(): Promise<boolean> {
+    const cookies = await getPlatformCookies(this.partition);
+    this.cookiesStr = stringifyCookies(cookies);
+
+    return new Promise((resolve) => {
+      request.post(
+        this.checkLoginStatusApi,
+        {
+          headers: {
+            cookie: this.cookiesStr,
+          },
+          form: {
+            client_type: 0,
+            _dataClientType: 0,
+          },
         },
-        form: {
-          _dataType: 'json',
-          type: '0',
-          md5,
+        (error, response, body) => {
+          const data = JSON.parse(body);
+
+          if (data.body.LoginTimeOut) {
+            resolve(false);
+          } else {
+            resolve(true);
+          }
         },
-      },
-      (error, response, body) => {
-        const data = JSON.parse(body);
-        resolve(data.body.data);
-      },
-    );
-  });
-}
-
-/**
- * 上传文件
- * @param filePath
- * @param data
- * @param cookiesStr
- */
-function uploadFile(filePath: string, data: ConfigData, cookiesStr: string) {
-  const url = 'https://pri-cdn-oss.chuangkit.com/';
-  const buffer = fs.readFileSync(filePath);
-
-  return new Promise((resolve) => {
-    const req = request.post(
-      url,
-      {
-        headers: {
-          cookie: cookiesStr,
-        },
-      },
-      () => {
-        resolve(undefined);
-      },
-    );
-
-    const form = req.form();
-
-    form.append('key', data.uploadPms.fileKey);
-    form.append('policy', data.uploadPms.policy);
-    form.append('Signature', data.uploadPms.signature);
-    form.append('OSSAccessKeyId', 'LTAI5tLA8R9gj4dHcVn23jMZ');
-    form.append('Content-MD5', data.uploadPms.md5);
-    form.append('file', buffer);
-  });
-}
-
-/**
- * 文件上传完成之后获取文件的url
- * @param data
- * @param cookiesStr
- */
-function getUrl(data: ConfigData, cookiesStr: string): Promise<string> {
-  const url = 'https://api-v2.chuangkit.com/design/addImageCommonMattingTask.do';
-
-  return new Promise((resolve) => {
-    request.post(
-      url,
-      {
-        form: {
-          task_id: data.taskId,
-          policy: data.uploadPms.policy,
-          signature: data.uploadPms.signature,
-        },
-        headers: {
-          cookie: cookiesStr,
-        },
-      },
-      (error, response, body) => {
-        const data = JSON.parse(body);
-        resolve(data.body.data.imageUrl);
-      },
-    );
-  });
+      );
+    });
+  }
 }

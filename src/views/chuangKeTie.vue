@@ -5,32 +5,40 @@
     </template>
 
     <template v-else>
-      <div>已登录，请选择图片！</div>
-      <Button @click="uploadFile">上传图片</Button>
+      <div class="options">
+        <Button @click="uploadFile">请选择图片</Button>
+        <Checkbox v-model:checked="autoSave">自动保存</Checkbox>
+        <div class="save">
+          <span>保存路径：</span>
+          <Input disabled v-model:value="savePath" />
+          <span class="modify">修改保存路径</span>
+        </div>
+      </div>
 
-      <div style="display: flex; flex-wrap: wrap; align-items: center">
-        <template v-for="item of handledUrlList" :key="item">
-          <img style="margin: 20px" width="150" height="150" :src="item" alt="" />
-        </template>
+      <div class="img-list">
+        <div v-for="item of handledUrlList" :key="item">
+          <img :src="item" alt="" />
+        </div>
       </div>
     </template>
 
     <LoginAuthDialog
       v-if="isOpenLoginAuthDialog"
+      :webviewProp="webviewProp"
       :visible="isOpenLoginAuthDialog"
       @update:visible="isOpenLoginAuthDialog = $event"
-      :webviewProp="webviewProp"
+      @loginSuccess="hasLogin = true"
     />
   </div>
 </template>
 
 <script lang="ts">
-import { Button } from 'ant-design-vue';
+import { Button, Checkbox, Input } from 'ant-design-vue';
 import { ref, defineComponent } from 'vue';
-import { checkLoginStatus, kouTou } from '@/platform/chuangKeTie';
+import { remote } from 'electron';
+import { CheckLoginStatus, ChuangKeTie } from '@/platform/chuangKeTie';
 import LoginAuthDialog from '@/components/dialog/loginAuthDialog.vue';
 import platformData from '@/data/platformData';
-import { remote } from 'electron';
 
 export default defineComponent({
   name: 'chuangKeTei',
@@ -38,6 +46,8 @@ export default defineComponent({
   components: {
     LoginAuthDialog,
     Button,
+    Checkbox,
+    Input,
   },
 
   setup() {
@@ -45,15 +55,26 @@ export default defineComponent({
     let isOpenLoginAuthDialog = ref(false);
     let hasLogin = ref(false);
     let handledUrlList = ref<string[]>([]);
+    let savePath = ref(localStorage.getItem('savePath') || remote.app.getPath('downloads'));
+    let autoSave = ref(true);
 
-    checkLoginStatus(webviewProp.partition).then((res) => {
+    // 检测是否登录
+    const checkLoginStatus = new CheckLoginStatus(webviewProp.partition);
+
+    checkLoginStatus.check().then((res) => {
       hasLogin.value = res;
     });
 
+    /**
+     * 登录
+     */
     const login = () => {
       isOpenLoginAuthDialog.value = true;
     };
 
+    /**
+     * 上传图片文件
+     */
     const uploadFile = () => {
       remote.dialog
         .showOpenDialog({
@@ -67,11 +88,11 @@ export default defineComponent({
         })
         .then(async (res) => {
           if (!res.canceled) {
-            for (let item of res.filePaths) {
-              await kouTou(webviewProp.partition, item).then((url) => {
-                handledUrlList.value.push('https:' + url);
-              });
-            }
+            let chuangKeTie = new ChuangKeTie(webviewProp.partition, res.filePaths);
+
+            chuangKeTie.kouTou().then((imgUrlList) => {
+              handledUrlList.value = imgUrlList;
+            });
           }
         });
     };
@@ -80,6 +101,8 @@ export default defineComponent({
       webviewProp,
       hasLogin,
       isOpenLoginAuthDialog,
+      savePath,
+      autoSave,
       handledUrlList,
       login,
       uploadFile,
@@ -88,4 +111,47 @@ export default defineComponent({
 });
 </script>
 
-<style lang="less" scoped></style>
+<style lang="less" scoped>
+.chuang-ke-tie {
+  .options {
+    display: flex;
+    align-items: center;
+
+    > .ant-checkbox-wrapper {
+      margin: 0 20px;
+    }
+
+    > .save {
+      display: flex;
+      align-items: center;
+
+      > .ant-input {
+        width: 300px;
+      }
+
+      > .modify {
+        margin-left: 10px;
+        color: cornflowerblue;
+        cursor: pointer;
+      }
+    }
+  }
+
+  .img-list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+
+    > div {
+      margin: 0 auto;
+      height: 300px;
+      width: 300px;
+
+      > img {
+        max-width: 100%;
+        max-height: 100%;
+      }
+    }
+  }
+}
+</style>

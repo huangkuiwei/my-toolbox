@@ -14,5 +14,6 @@ export default defineComponent({
 
 <style lang="less" scoped>
 .app-platform {
+  margin-bottom: 20px;
 }
 </style>
