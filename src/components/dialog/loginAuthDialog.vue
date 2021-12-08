@@ -23,7 +23,6 @@ import { remote, WebviewTag } from 'electron';
 
 interface Data {
   webview: WebviewTag | null;
-  homePage: string;
 }
 
 export default defineComponent({
@@ -39,6 +38,7 @@ export default defineComponent({
       required: true,
       default: () => ({
         partition: '',
+        homePage: '',
       }),
     },
   },
@@ -52,7 +52,6 @@ export default defineComponent({
   data(): Data {
     return {
       webview: null,
-      homePage: 'https://www.chuangkit.com/designtools/designindex',
     };
   },
 
@@ -64,12 +63,12 @@ export default defineComponent({
         if (this.webview) {
           let id = this.webview.getWebContentsId();
           let webContent = remote.webContents.fromId(id);
-          webContent.openDevTools();
+          // webContent.openDevTools();
         }
       });
 
       this.webview.addEventListener('did-navigate', (event) => {
-        if (event.url === this.homePage) {
+        if (event.url === this.webviewProp.homePage) {
           // 登录成功
           message.success('登录成功');
           this.close();

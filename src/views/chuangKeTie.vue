@@ -7,6 +7,12 @@
     <template v-else>
       <div>已登录，请选择图片！</div>
       <Button @click="uploadFile">上传图片</Button>
+
+      <div style="display: flex; flex-wrap: wrap; align-items: center">
+        <template v-for="item of handledUrlList" :key="item">
+          <img style="margin: 20px" width="150" height="150" :src="item" alt="" />
+        </template>
+      </div>
     </template>
 
     <LoginAuthDialog
@@ -25,8 +31,6 @@ import { checkLoginStatus, kouTou } from '@/platform/chuangKeTie';
 import LoginAuthDialog from '@/components/dialog/loginAuthDialog.vue';
 import platformData from '@/data/platformData';
 import { remote } from 'electron';
-import crypto from 'crypto';
-import * as fs from 'fs';
 
 export default defineComponent({
   name: 'chuangKeTei',
@@ -40,7 +44,7 @@ export default defineComponent({
     const webviewProp = platformData.chuangKeTie;
     let isOpenLoginAuthDialog = ref(false);
     let hasLogin = ref(false);
-    let md5 = ref('');
+    let handledUrlList = ref<string[]>([]);
 
     checkLoginStatus(webviewProp.partition).then((res) => {
       hasLogin.value = res;
@@ -53,25 +57,21 @@ export default defineComponent({
     const uploadFile = () => {
       remote.dialog
         .showOpenDialog({
-          properties: ['openFile'],
+          properties: ['openFile', 'multiSelections'],
+          filters: [
+            {
+              name: 'pic',
+              extensions: ['png', 'jpg'],
+            },
+          ],
         })
-        .then((res) => {
+        .then(async (res) => {
           if (!res.canceled) {
-            let filePath = res.filePaths[0];
-            const buffer = fs.readFileSync(filePath);
-            const hash = crypto.createHash('md5');
-            hash.update(buffer);
-            md5.value = hash.digest('hex');
-
-            kouTou(
-              webviewProp.partition,
-              {
-                md5: md5.value,
-              },
-              filePath,
-            ).then((res) => {
-              console.log(res);
-            });
+            for (let item of res.filePaths) {
+              await kouTou(webviewProp.partition, item).then((url) => {
+                handledUrlList.value.push('https:' + url);
+              });
+            }
           }
         });
     };
@@ -80,6 +80,7 @@ export default defineComponent({
       webviewProp,
       hasLogin,
       isOpenLoginAuthDialog,
+      handledUrlList,
       login,
       uploadFile,
     };
