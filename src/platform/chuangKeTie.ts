@@ -69,7 +69,6 @@ export class ChuangKeTie {
         },
         (error, response, body) => {
           const data = JSON.parse(body);
-          console.log(data);
           this.configData = data.body.data;
           resolve(undefined);
         },

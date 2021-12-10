@@ -33,12 +33,20 @@
 </template>
 
 <script lang="ts">
-import { Button, Checkbox, Input } from 'ant-design-vue';
-import { ref, defineComponent } from 'vue';
-import { remote } from 'electron';
+import { Button, Checkbox, Input, message, notification } from 'ant-design-vue';
+import { defineComponent, ref, h } from 'vue';
+import { remote, ipcRenderer, shell } from 'electron';
 import { CheckLoginStatus, ChuangKeTie } from '@/platform/chuangKeTie';
 import LoginAuthDialog from '@/components/dialog/loginAuthDialog.vue';
 import platformData from '@/data/platformData';
+import { autoDownloadPic } from '@/tools';
+import { MessageType } from 'ant-design-vue/lib/message';
+
+interface DownloadItem {
+  success: boolean;
+  filePath: string;
+  fileName: string;
+}
 
 export default defineComponent({
   name: 'chuangKeTei',
@@ -55,8 +63,47 @@ export default defineComponent({
     let isOpenLoginAuthDialog = ref(false);
     let hasLogin = ref(false);
     let handledUrlList = ref<string[]>([]);
-    let savePath = ref(localStorage.getItem('savePath') || remote.app.getPath('downloads'));
     let autoSave = ref(true);
+    let downloadedList: DownloadItem[] = [];
+    let downloadLoading: MessageType;
+
+    let localSavePath = localStorage.getItem('savePath') || remote.app.getPath('downloads');
+    ipcRenderer.send('setSaveData', localSavePath);
+    let savePath = ref(localSavePath);
+
+    // 监听下载事件
+    ipcRenderer.on('downloadComplete', (event, info) => {
+      downloadedList.push(info);
+
+      // 全部下载完成关闭loading
+      if (downloadedList.length === handledUrlList.value.length) {
+        downloadLoading();
+
+        notification.info({
+          message: '下载完成！',
+          duration: 0,
+          description: () => {
+            const imgList = downloadedList.map((item) => {
+              return h('div', {}, [
+                h('div', { class: 'filename' }, item.fileName),
+                h(
+                  'div',
+                  {
+                    class: 'open',
+                    onClick: () => {
+                      shell.openPath(item.filePath);
+                    },
+                  },
+                  '打开文件',
+                ),
+              ]);
+            });
+
+            return h('div', { class: 'download-notify' }, imgList);
+          },
+        });
+      }
+    });
 
     // 检测是否登录
     const checkLoginStatus = new CheckLoginStatus(webviewProp.partition);
@@ -81,11 +128,21 @@ export default defineComponent({
         })
         .then(async (res) => {
           if (!res.canceled) {
+            let handlerLoading = message.loading('正在处理中，请稍等...', 0);
             let chuangKeTie = new ChuangKeTie(webviewProp.partition, res.filePaths);
+            handledUrlList.value = await chuangKeTie.kouTou();
+            handlerLoading();
 
-            chuangKeTie.kouTou().then((imgUrlList) => {
-              handledUrlList.value = imgUrlList;
-            });
+            if (autoSave.value) {
+              downloadLoading = message.loading('处理完成，正在下载中，请稍等...', 0);
+
+              handledUrlList.value.forEach((item) => {
+                autoDownloadPic(item);
+              });
+              downloadedList = [];
+            } else {
+              message.success('处理完成');
+            }
           }
         });
     };
@@ -146,6 +203,33 @@ export default defineComponent({
         max-width: 100%;
         max-height: 100%;
       }
+    }
+  }
+}
+</style>
+
+<style lang="less">
+.download-notify {
+  display: flex;
+  flex-direction: column;
+
+  > div {
+    margin: 5px 0;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+
+    > .filename {
+      flex-grow: 1;
+      margin-right: 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    > .open {
+      color: cornflowerblue;
+      flex-shrink: 0;
+      cursor: pointer;
     }
   }
 }

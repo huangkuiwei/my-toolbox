@@ -44,3 +44,11 @@ export function getFileMd5(filePath: string): string {
   hash.update(buffer);
   return hash.digest('hex');
 }
+
+/**
+ * 下载图片
+ * @param url
+ */
+export function autoDownloadPic(url: string): void {
+  remote.getCurrentWebContents().downloadURL(url);
+}
