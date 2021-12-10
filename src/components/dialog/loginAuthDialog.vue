@@ -19,7 +19,7 @@
 <script lang="ts">
 import { Modal, message } from 'ant-design-vue';
 import { defineComponent } from 'vue';
-import { remote, WebviewTag } from 'electron';
+import { WebviewTag } from 'electron';
 
 interface Data {
   webview: WebviewTag | null;
@@ -61,9 +61,7 @@ export default defineComponent({
 
       this.webview.addEventListener('dom-ready', () => {
         if (this.webview) {
-          // let id = this.webview.getWebContentsId();
-          // let webContent = remote.webContents.fromId(id);
-          // webContent.openDevTools();
+          // this.webview.openDevTools();
         }
       });
 

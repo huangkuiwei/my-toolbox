@@ -11,7 +11,7 @@
         <div class="save">
           <span>保存路径：</span>
           <Input disabled v-model:value="savePath" />
-          <span class="modify">修改保存路径</span>
+          <span class="modify" @click="modifyPath">修改保存路径</span>
         </div>
       </div>
 
@@ -82,6 +82,7 @@ export default defineComponent({
         notification.info({
           message: '下载完成！',
           duration: 0,
+          placement: 'bottomRight',
           description: () => {
             const imgList = downloadedList.map((item) => {
               return h('div', {}, [
@@ -111,6 +112,22 @@ export default defineComponent({
     checkLoginStatus.check().then((res) => {
       hasLogin.value = res;
     });
+
+    const modifyPath = () => {
+      remote.dialog
+        .showOpenDialog({
+          properties: ['openDirectory'],
+        })
+        .then((res) => {
+          if (!res.canceled) {
+            const filePath = res.filePaths[0];
+            savePath.value = filePath;
+            localStorage.setItem('savePath', filePath);
+            ipcRenderer.send('setSaveData', filePath);
+            message.success('修改成功');
+          }
+        });
+    };
 
     /**
      * 上传图片文件
@@ -154,6 +171,7 @@ export default defineComponent({
       savePath,
       autoSave,
       handledUrlList,
+      modifyPath,
       uploadFile,
     };
   },
