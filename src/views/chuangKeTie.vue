@@ -1,16 +1,16 @@
 <template>
   <div class="chuang-ke-tie">
     <template v-if="!hasLogin">
-      <Button @click="isOpenLoginAuthDialog = true">请登录</Button>
+      <a-button @click="isOpenLoginAuthDialog = true">请登录</a-button>
     </template>
 
     <template v-else>
       <div class="options">
-        <Button @click="uploadFile">请选择图片</Button>
-        <Checkbox v-model:checked="autoSave">自动保存</Checkbox>
+        <a-button @click="uploadFile">请选择图片</a-button>
+        <a-checkbox v-model:checked="autoSave">自动保存</a-checkbox>
         <div class="save">
           <span>保存路径：</span>
-          <Input disabled v-model:value="savePath" />
+          <a-input disabled v-model:value="savePath" />
           <span class="modify" @click="modifyPath">修改保存路径</span>
         </div>
       </div>
@@ -32,15 +32,15 @@
   </div>
 </template>
 
-<script lang="ts">
-import { Button, Checkbox, Input, message, notification } from 'ant-design-vue';
-import { defineComponent, ref, h } from 'vue';
+<script lang="tsx" setup>
+import { ref } from 'vue';
 import { remote, ipcRenderer, shell } from 'electron';
+import { message, notification } from 'ant-design-vue';
+import { MessageType } from 'ant-design-vue/lib/message';
 import { CheckLoginStatus, ChuangKeTie } from '@/platform/chuangKeTie';
-import LoginAuthDialog from '@/components/dialog/loginAuthDialog.vue';
 import platformData from '@/data/platformData';
 import { autoDownloadPic } from '@/tools';
-import { MessageType } from 'ant-design-vue/lib/message';
+import LoginAuthDialog from '@/components/dialog/loginAuthDialog.vue';
 
 interface DownloadItem {
   success: boolean;
@@ -48,134 +48,107 @@ interface DownloadItem {
   fileName: string;
 }
 
-export default defineComponent({
-  name: 'chuangKeTei',
+const webviewProp = platformData.chuangKeTie;
+const isOpenLoginAuthDialog = ref(false);
+const hasLogin = ref(false);
+const handledUrlList = ref<string[]>([]);
+const autoSave = ref(true);
+let downloadedList: DownloadItem[] = [];
+let downloadLoading: MessageType;
 
-  components: {
-    LoginAuthDialog,
-    Button,
-    Checkbox,
-    Input,
-  },
+let localSavePath = localStorage.getItem('savePath') || remote.app.getPath('downloads');
+ipcRenderer.send('setSaveData', localSavePath);
+let savePath = ref(localSavePath);
 
-  setup() {
-    const webviewProp = platformData.chuangKeTie;
-    let isOpenLoginAuthDialog = ref(false);
-    let hasLogin = ref(false);
-    let handledUrlList = ref<string[]>([]);
-    let autoSave = ref(true);
-    let downloadedList: DownloadItem[] = [];
-    let downloadLoading: MessageType;
+// 监听下载事件
+ipcRenderer.on('downloadComplete', (event, info) => {
+  downloadedList.push(info);
 
-    let localSavePath = localStorage.getItem('savePath') || remote.app.getPath('downloads');
-    ipcRenderer.send('setSaveData', localSavePath);
-    let savePath = ref(localSavePath);
+  // 全部下载完成关闭loading
+  if (downloadedList.length === handledUrlList.value.length) {
+    downloadLoading();
 
-    // 监听下载事件
-    ipcRenderer.on('downloadComplete', (event, info) => {
-      downloadedList.push(info);
+    notification.info({
+      message: '下载完成！',
+      duration: 0,
+      placement: 'bottomRight',
+      description: () => {
+        const imgListJSX = downloadedList.map((item) => (
+          <div>
+            <div class="filename">{item.filePath}</div>
+            <div class="open" onClick={() => shell.openPath(item.fileName)}>
+              打开文件
+            </div>
+          </div>
+        ));
 
-      // 全部下载完成关闭loading
-      if (downloadedList.length === handledUrlList.value.length) {
-        downloadLoading();
+        return <div class="download-notify">{imgListJSX}</div>;
+      },
+    });
+  }
+});
 
-        notification.info({
-          message: '下载完成！',
-          duration: 0,
-          placement: 'bottomRight',
-          description: () => {
-            const imgList = downloadedList.map((item) => {
-              return h('div', {}, [
-                h('div', { class: 'filename' }, item.fileName),
-                h(
-                  'div',
-                  {
-                    class: 'open',
-                    onClick: () => {
-                      shell.openPath(item.filePath);
-                    },
-                  },
-                  '打开文件',
-                ),
-              ]);
-            });
+// 检测是否登录
+const checkLoginStatus = new CheckLoginStatus(webviewProp.partition);
 
-            return h('div', { class: 'download-notify' }, imgList);
-          },
-        });
+checkLoginStatus.check().then((res) => {
+  hasLogin.value = res;
+});
+
+/**
+ * 修改保存路径
+ */
+const modifyPath = () => {
+  remote.dialog
+    .showOpenDialog({
+      properties: ['openDirectory'],
+    })
+    .then((res) => {
+      if (!res.canceled) {
+        const filePath = res.filePaths[0];
+        savePath.value = filePath;
+        localStorage.setItem('savePath', filePath);
+        ipcRenderer.send('setSaveData', filePath);
+        message.success('修改成功');
       }
     });
+};
 
-    // 检测是否登录
-    const checkLoginStatus = new CheckLoginStatus(webviewProp.partition);
+/**
+ * 上传图片文件
+ */
+const uploadFile = () => {
+  remote.dialog
+    .showOpenDialog({
+      properties: ['openFile', 'multiSelections'],
+      filters: [
+        {
+          name: 'pic',
+          extensions: ['png', 'jpg', 'jpeg'],
+        },
+      ],
+    })
+    .then(async (res) => {
+      if (!res.canceled) {
+        let handlerLoading = message.loading('正在处理中，请稍等...', 0);
+        let chuangKeTie = new ChuangKeTie(webviewProp.partition, res.filePaths);
+        handledUrlList.value = await chuangKeTie.kouTou();
+        handlerLoading();
 
-    checkLoginStatus.check().then((res) => {
-      hasLogin.value = res;
+        if (autoSave.value) {
+          downloadLoading = message.loading('处理完成，正在下载中，请稍等...', 0);
+
+          handledUrlList.value.forEach((item) => {
+            autoDownloadPic(item);
+          });
+
+          downloadedList = [];
+        } else {
+          message.success('处理完成');
+        }
+      }
     });
-
-    const modifyPath = () => {
-      remote.dialog
-        .showOpenDialog({
-          properties: ['openDirectory'],
-        })
-        .then((res) => {
-          if (!res.canceled) {
-            const filePath = res.filePaths[0];
-            savePath.value = filePath;
-            localStorage.setItem('savePath', filePath);
-            ipcRenderer.send('setSaveData', filePath);
-            message.success('修改成功');
-          }
-        });
-    };
-
-    /**
-     * 上传图片文件
-     */
-    const uploadFile = () => {
-      remote.dialog
-        .showOpenDialog({
-          properties: ['openFile', 'multiSelections'],
-          filters: [
-            {
-              name: 'pic',
-              extensions: ['png', 'jpg', 'jpeg'],
-            },
-          ],
-        })
-        .then(async (res) => {
-          if (!res.canceled) {
-            let handlerLoading = message.loading('正在处理中，请稍等...', 0);
-            let chuangKeTie = new ChuangKeTie(webviewProp.partition, res.filePaths);
-            handledUrlList.value = await chuangKeTie.kouTou();
-            handlerLoading();
-
-            if (autoSave.value) {
-              downloadLoading = message.loading('处理完成，正在下载中，请稍等...', 0);
-
-              handledUrlList.value.forEach((item) => {
-                autoDownloadPic(item);
-              });
-              downloadedList = [];
-            } else {
-              message.success('处理完成');
-            }
-          }
-        });
-    };
-
-    return {
-      webviewProp,
-      hasLogin,
-      isOpenLoginAuthDialog,
-      savePath,
-      autoSave,
-      handledUrlList,
-      modifyPath,
-      uploadFile,
-    };
-  },
-});
+};
 </script>
 
 <style lang="less" scoped>

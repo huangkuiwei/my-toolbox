@@ -7,7 +7,7 @@
     @cancel="close"
   >
     <webview
-      ref="webview"
+      ref="webviewRef"
       id="webview"
       :src="webviewProp.loginPage"
       :partition="webviewProp.partition"
@@ -16,71 +16,40 @@
   </Modal>
 </template>
 
-<script lang="ts">
-import { Modal, message } from 'ant-design-vue';
-import { defineComponent } from 'vue';
+<script lang="tsx" setup>
+import { onMounted, ref } from 'vue';
 import { WebviewTag } from 'electron';
+import { message } from 'ant-design-vue';
 
-interface Data {
-  webview: WebviewTag | null;
-}
+const props = defineProps<{
+  visible: boolean;
+  webviewProp: WebViewProp;
+}>();
 
-export default defineComponent({
-  name: 'loginAuth',
+const emit = defineEmits<{
+  (e: 'update:visible', visible: boolean): void;
+  (e: 'loginSuccess'): void;
+}>();
 
-  props: {
-    visible: {
-      required: true,
-      default: false,
-    },
+const webviewRef = ref<WebviewTag>();
 
-    webviewProp: {
-      required: true,
-      default: () => ({
-        partition: '',
-        homePage: '',
-      }),
-    },
-  },
+const close = () => {
+  emit('update:visible', false);
+};
 
-  emits: ['update:visible', 'loginSuccess'],
+onMounted(() => {
+  webviewRef.value?.addEventListener('dom-ready', () => {
+    webviewRef.value?.openDevTools();
+  });
 
-  components: {
-    Modal,
-  },
-
-  data(): Data {
-    return {
-      webview: null,
-    };
-  },
-
-  mounted() {
-    this.$nextTick(() => {
-      this.webview = this.$refs.webview as WebviewTag;
-
-      this.webview.addEventListener('dom-ready', () => {
-        if (this.webview) {
-          // this.webview.openDevTools();
-        }
-      });
-
-      this.webview.addEventListener('did-navigate', (event) => {
-        if (event.url === this.webviewProp.homePage) {
-          // 登录成功
-          message.success('登录成功');
-          this.$emit('loginSuccess');
-          this.close();
-        }
-      });
-    });
-  },
-
-  methods: {
-    close() {
-      this.$emit('update:visible', false);
-    },
-  },
+  webviewRef.value?.addEventListener('did-navigate', (event) => {
+    if (event.url === props.webviewProp.homePage) {
+      // 登录成功
+      message.success('登录成功');
+      emit('loginSuccess');
+      close();
+    }
+  });
 });
 </script>
 

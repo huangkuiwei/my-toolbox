@@ -1,4 +1,8 @@
-export default {
+type WebViewPropList = {
+  [propName: string]: WebViewProp;
+};
+
+const platformDataList: WebViewPropList = {
   chuangKeTie: {
     checkLoginUrl: 'https://api.chuangkit.com/user/getUserInfo.do',
     loginPage: 'https://www.chuangkit.com/',
@@ -7,3 +11,5 @@ export default {
     homePage: 'https://www.chuangkit.com/designtools/designindex',
   },
 };
+
+export default platformDataList;

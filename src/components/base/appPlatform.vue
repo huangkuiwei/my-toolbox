@@ -4,13 +4,7 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-
-export default defineComponent({
-  name: 'appPlatform',
-});
-</script>
+<script lang="tsx" setup></script>
 
 <style lang="less" scoped>
 .app-platform {

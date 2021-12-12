@@ -6,3 +6,11 @@ declare module '*.vue' {
 }
 
 declare const __static: string;
+
+interface WebViewProp {
+  checkLoginUrl: string;
+  loginPage: string;
+  partition: string;
+  preload: string;
+  homePage: string;
+}

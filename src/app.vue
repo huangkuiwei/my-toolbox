@@ -1,22 +1,12 @@
 <template>
   <div id="app">
-    <app-platform />
-
+    <AppPlatform />
     <router-view />
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent } from 'vue';
-import appPlatform from '@/components/base/appPlatform.vue';
-
-export default defineComponent({
-  name: 'app',
-
-  components: {
-    appPlatform,
-  },
-});
+<script lang="ts" setup>
+import AppPlatform from '@/components/base/appPlatform.vue';
 </script>
 
 <style lang="less"></style>
