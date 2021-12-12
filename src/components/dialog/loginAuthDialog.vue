@@ -1,5 +1,5 @@
 <template>
-  <Modal
+  <a-modal
     class="login-auth"
     :footer="false"
     :visible="visible"
@@ -9,11 +9,12 @@
     <webview
       ref="webviewRef"
       id="webview"
+      :useragent="userAgent"
       :src="webviewProp.loginPage"
       :partition="webviewProp.partition"
       :preload="webviewProp.preload"
     />
-  </Modal>
+  </a-modal>
 </template>
 
 <script lang="tsx" setup>
@@ -32,6 +33,8 @@ const emit = defineEmits<{
 }>();
 
 const webviewRef = ref<WebviewTag>();
+const userAgent =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/94.0.4606.81 Safari/537.36';
 
 const close = () => {
   emit('update:visible', false);
@@ -55,9 +58,10 @@ onMounted(() => {
 
 <style lang="less">
 .login-auth {
-  top: 20px;
-  width: calc(100% - 40px) !important;
-  height: calc(100vh - 40px);
+  top: 25px !important;
+  padding-bottom: 0 !important;
+  width: calc(100% - 50px) !important;
+  height: calc(100vh - 50px) !important;
 
   .ant-modal-content {
     height: 100%;
@@ -71,7 +75,7 @@ onMounted(() => {
         position: absolute;
         left: 0;
         right: 0;
-        top: 0;
+        top: 50px;
         bottom: 0;
       }
     }

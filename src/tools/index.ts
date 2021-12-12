@@ -10,6 +10,11 @@ export function getPlatformCookies(partition: string): Promise<Cookie[]> {
   return remote.session.fromPartition(partition).cookies.get({});
 }
 
+export async function clearWebviewCache(partition: string): Promise<void> {
+  await remote.session.fromPartition(partition).clearCache();
+  await remote.session.fromPartition(partition).clearStorageData();
+}
+
 /**
  * cookies格式转换
  * @param cookies

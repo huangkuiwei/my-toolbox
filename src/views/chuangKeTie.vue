@@ -5,6 +5,10 @@
     </template>
 
     <template v-else>
+      <div class="logout">
+        <a-button @click="logout">退出登录</a-button>
+      </div>
+
       <div class="options">
         <a-button @click="uploadFile">请选择图片</a-button>
         <a-checkbox v-model:checked="autoSave">自动保存</a-checkbox>
@@ -39,7 +43,7 @@ import { message, notification } from 'ant-design-vue';
 import { MessageType } from 'ant-design-vue/lib/message';
 import { CheckLoginStatus, ChuangKeTie } from '@/platform/chuangKeTie';
 import platformData from '@/data/platformData';
-import { autoDownloadPic } from '@/tools';
+import { autoDownloadPic, clearWebviewCache } from '@/tools';
 import LoginAuthDialog from '@/components/dialog/loginAuthDialog.vue';
 
 interface DownloadItem {
@@ -94,6 +98,16 @@ const checkLoginStatus = new CheckLoginStatus(webviewProp.partition);
 checkLoginStatus.check().then((res) => {
   hasLogin.value = res;
 });
+
+/**
+ * 退出登录
+ */
+const logout = () => {
+  clearWebviewCache(webviewProp.partition).then(() => {
+    hasLogin.value = false;
+    message.success('退出成功');
+  });
+};
 
 /**
  * 修改保存路径
@@ -153,6 +167,10 @@ const uploadFile = () => {
 
 <style lang="less" scoped>
 .chuang-ke-tie {
+  .logout {
+    margin-bottom: 10px;
+  }
+
   .options {
     display: flex;
     align-items: center;
