@@ -7,7 +7,6 @@ import installExtension, { VUEJS3_DEVTOOLS } from 'electron-devtools-installer';
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
 ipcMain.on('setSaveData', (event, path: string) => {
-  console.log(path);
   // @ts-ignore
   global.savePath = path;
 });

@@ -5,6 +5,10 @@ declare module '*.vue' {
   export default component;
 }
 
+interface Window {
+  savePath: string;
+}
+
 declare const __static: string;
 
 interface WebViewProp {
